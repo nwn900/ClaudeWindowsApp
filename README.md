@@ -2,7 +2,9 @@
 
 A simple Windows desktop application for Claude AI.
 
-Download: [Releases](https://github.com/Some1private/ClaudeWindowsApp/releases/)
+Download: [Releases](https://github.com/nwn900/ClaudeWindowsApp/releases/)
+
+This repository is a fork of [elijahdev0/ClaudeWindowsApp](https://github.com/elijahdev0/ClaudeWindowsApp).
 
 ## Description
 
@@ -32,11 +34,11 @@ If you want to build the application from source:
 
 1. Clone this repository:
    ```
-   git clone [[https://github.com/some1private/claude-desktop.git](https://github.com/Some1private/ClaudeWindowsApp.git]
+   git clone https://github.com/nwn900/ClaudeWindowsApp.git
    ```
 2. Navigate to the project directory:
    ```
-   cd claude-desktop
+   cd ClaudeWindowsApp
    ```
 3. Install dependencies:
    ```

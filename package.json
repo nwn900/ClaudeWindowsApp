@@ -19,6 +19,7 @@
     "appId": "com.yourcompany.claude",
     "productName": "Claude",
     "win": {
+      "signAndEditExecutable": false,
       "target": [
         "nsis"
       ],
