@@ -15,6 +15,7 @@ This application provides a convenient way to access Claude AI directly from you
 - Direct access to Claude AI
 - Native Windows application
 - Minimalist interface
+- Optional launch at Windows startup from the app tray/menu
 
 ## Installation
 
@@ -27,6 +28,7 @@ This application provides a convenient way to access Claude AI directly from you
 1. Launch the Claude app from your desktop or start menu.
 2. The app will open directly to Claude AI's interface.
 3. Start chatting with Claude!
+4. To have Claude launch with Windows, right-click the tray icon and enable `Launch at system startup`.
 
 ## Building from Source
 

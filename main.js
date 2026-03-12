@@ -8,6 +8,8 @@ const IN_APP_HOST_SUFFIXES = [
   'google.com',
   'googleusercontent.com'
 ]
+const STARTUP_ARG = '--launch-at-startup'
+const SUPPORTS_LOGIN_ITEM_SETTINGS = ['darwin', 'win32'].includes(process.platform)
 
 let mainWindow = null
 let tray = null
@@ -17,8 +19,128 @@ if (typeof app.userAgentFallback === 'string') {
   app.userAgentFallback = app.userAgentFallback.replace(/\sElectron\/[^\s]+/, '')
 }
 
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+
+if (!gotSingleInstanceLock) {
+  app.quit()
+}
+
 function isMatchingHost(hostname, suffix) {
   return hostname === suffix || hostname.endsWith(`.${suffix}`)
+}
+
+function getLoginItemArgs() {
+  if (!process.defaultApp) {
+    return [STARTUP_ARG]
+  }
+
+  return [app.getAppPath(), STARTUP_ARG]
+}
+
+function getLoginItemSettingsQuery() {
+  return {
+    path: process.execPath,
+    args: getLoginItemArgs()
+  }
+}
+
+function getLoginItemOptions(openAtLogin) {
+  return {
+    openAtLogin,
+    ...getLoginItemSettingsQuery()
+  }
+}
+
+function opensAtLogin() {
+  if (!SUPPORTS_LOGIN_ITEM_SETTINGS) {
+    return false
+  }
+
+  return app.getLoginItemSettings(getLoginItemSettingsQuery()).openAtLogin
+}
+
+function createStartupMenuItem() {
+  return {
+    label: 'Launch at system startup',
+    type: 'checkbox',
+    checked: opensAtLogin(),
+    enabled: SUPPORTS_LOGIN_ITEM_SETTINGS,
+    click: (menuItem) => {
+      if (!SUPPORTS_LOGIN_ITEM_SETTINGS) {
+        return
+      }
+
+      app.setLoginItemSettings(getLoginItemOptions(menuItem.checked))
+      refreshMenus()
+    }
+  }
+}
+
+function refreshMenus() {
+  if (tray) {
+    tray.setContextMenu(Menu.buildFromTemplate([
+      {
+        label: 'Open Claude',
+        click: showMainWindow
+      },
+      createStartupMenuItem(),
+      { type: 'separator' },
+      {
+        label: 'Close Claude',
+        click: () => {
+          isQuitting = true
+          app.quit()
+        }
+      }
+    ]))
+  }
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: 'Claude',
+      submenu: [
+        {
+          label: 'Open Claude',
+          click: showMainWindow
+        },
+        createStartupMenuItem(),
+        { type: 'separator' },
+        {
+          label: 'Close Claude',
+          click: () => {
+            isQuitting = true
+            app.quit()
+          }
+        }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'close' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Open claude.ai',
+          click: () => {
+            openExternal(CLAUDE_URL)
+          }
+        }
+      ]
+    }
+  ]))
 }
 
 function shouldStayInApp(urlString) {
@@ -112,20 +234,7 @@ function createTray() {
 
   tray = new Tray(path.join(__dirname, 'icon.ico'))
   tray.setToolTip('Claude')
-  tray.setContextMenu(Menu.buildFromTemplate([
-    {
-      label: 'Open Claude',
-      click: showMainWindow
-    },
-    { type: 'separator' },
-    {
-      label: 'Close Claude',
-      click: () => {
-        isQuitting = true
-        app.quit()
-      }
-    }
-  ]))
+  refreshMenus()
   tray.on('click', showMainWindow)
   tray.on('double-click', showMainWindow)
 }
@@ -170,10 +279,20 @@ function createWindow() {
   return win
 }
 
-app.whenReady().then(() => {
-  createTray()
-  createWindow()
-})
+if (gotSingleInstanceLock) {
+  app.on('second-instance', () => {
+    showMainWindow()
+  })
+
+  app.whenReady().then(() => {
+    createTray()
+    refreshMenus()
+
+    if (!process.argv.includes(STARTUP_ARG)) {
+      createWindow()
+    }
+  })
+}
 
 app.on('before-quit', () => {
   isQuitting = true
