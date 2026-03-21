@@ -10,13 +10,21 @@ const IN_APP_HOST_SUFFIXES = [
 ]
 const STARTUP_ARG = '--launch-at-startup'
 const SUPPORTS_LOGIN_ITEM_SETTINGS = ['darwin', 'win32'].includes(process.platform)
+const UNRESPONSIVE_RESTART_DELAY_MS = 8000
 
 let mainWindow = null
 let tray = null
 let isQuitting = false
+let isRecoveringWindow = false
+let lastMainWindowUrl = CLAUDE_URL
+let windowRecoveryTimer = null
 
 if (typeof app.userAgentFallback === 'string') {
   app.userAgentFallback = app.userAgentFallback.replace(/\sElectron\/[^\s]+/, '')
+}
+
+if (process.platform === 'win32') {
+  app.disableHardwareAcceleration()
 }
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
@@ -143,6 +151,65 @@ function refreshMenus() {
   ]))
 }
 
+function clearWindowRecoveryTimer() {
+  if (!windowRecoveryTimer) {
+    return
+  }
+
+  clearTimeout(windowRecoveryTimer)
+  windowRecoveryTimer = null
+}
+
+function rememberMainWindowUrl(urlString) {
+  if (!shouldStayInApp(urlString)) {
+    return
+  }
+
+  lastMainWindowUrl = urlString
+}
+
+function recoverMainWindow(reason) {
+  if (isQuitting || isRecoveringWindow || !mainWindow || mainWindow.isDestroyed()) {
+    return
+  }
+
+  const currentWindow = mainWindow
+  const bounds = currentWindow.getBounds()
+  const shouldShowWindow = currentWindow.isVisible() || currentWindow.isFocused()
+
+  isRecoveringWindow = true
+  clearWindowRecoveryTimer()
+  console.warn(`Claude window became unresponsive (${reason}); recreating it.`)
+
+  currentWindow.removeAllListeners('unresponsive')
+  currentWindow.removeAllListeners('responsive')
+  currentWindow.webContents.removeAllListeners('render-process-gone')
+  currentWindow.destroy()
+
+  createWindow({
+    bounds,
+    show: shouldShowWindow,
+    url: lastMainWindowUrl
+  })
+
+  if (shouldShowWindow) {
+    showMainWindow()
+  }
+
+  isRecoveringWindow = false
+}
+
+function scheduleMainWindowRecovery(reason) {
+  if (isQuitting || isRecoveringWindow || windowRecoveryTimer || !mainWindow || mainWindow.isDestroyed()) {
+    return
+  }
+
+  windowRecoveryTimer = setTimeout(() => {
+    windowRecoveryTimer = null
+    recoverMainWindow(reason)
+  }, UNRESPONSIVE_RESTART_DELAY_MS)
+}
+
 function shouldStayInApp(urlString) {
   if (urlString === 'about:blank') {
     return true
@@ -202,6 +269,28 @@ function configureWindow(win) {
   })
 }
 
+function configureMainWindow(win) {
+  win.on('unresponsive', () => {
+    scheduleMainWindowRecovery('window-unresponsive')
+  })
+
+  win.on('responsive', () => {
+    clearWindowRecoveryTimer()
+  })
+
+  win.webContents.on('did-navigate', (_, url) => {
+    rememberMainWindowUrl(url)
+  })
+
+  win.webContents.on('did-navigate-in-page', (_, url) => {
+    rememberMainWindowUrl(url)
+  })
+
+  win.webContents.on('render-process-gone', (_, details) => {
+    recoverMainWindow(details.reason)
+  })
+}
+
 function showMainWindow() {
   if (!mainWindow) {
     createWindow()
@@ -239,7 +328,7 @@ function createTray() {
   tray.on('double-click', showMainWindow)
 }
 
-function createWindow() {
+function createWindow(options = {}) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     return mainWindow
   }
@@ -247,6 +336,8 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 900,
+    ...(options.bounds ?? {}),
+    show: options.show ?? true,
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -256,7 +347,9 @@ function createWindow() {
 
   mainWindow = win
   configureWindow(win)
-  win.loadURL(CLAUDE_URL)
+  configureMainWindow(win)
+  rememberMainWindowUrl(options.url ?? lastMainWindowUrl)
+  win.loadURL(options.url ?? lastMainWindowUrl)
 
   win.on('minimize', (event) => {
     event.preventDefault()
@@ -273,7 +366,10 @@ function createWindow() {
   })
 
   win.on('closed', () => {
-    mainWindow = null
+    clearWindowRecoveryTimer()
+    if (mainWindow === win) {
+      mainWindow = null
+    }
   })
 
   return win
