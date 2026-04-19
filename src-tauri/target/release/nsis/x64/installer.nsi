@@ -28,7 +28,7 @@ ${StrLoc}
 
 !define WEBVIEW2APPGUID "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
 
-!define MANUFACTURER "nwn900"
+!define MANUFACTURER "claude"
 !define PRODUCTNAME "Claude"
 !define VERSION "1.1.0"
 !define VERSIONWITHBUILD "1.1.0.0"
@@ -40,7 +40,7 @@ ${StrLoc}
 !define HEADERIMAGE ""
 !define MAINBINARYNAME "claude-windows-app"
 !define MAINBINARYSRCPATH "C:\Users\micha\Gemini Windows App\scratch\ClaudeWindowsApp\src-tauri\target\release\claude-windows-app.exe"
-!define BUNDLEID "com.nwn900.claude"
+!define BUNDLEID "com.claude.app.v2"
 !define COPYRIGHT ""
 !define OUTFILE "nsis-output.exe"
 !define ARCH "x64"
@@ -56,7 +56,7 @@ ${StrLoc}
 !define MANUKEY "Software\${MANUFACTURER}"
 !define MANUPRODUCTKEY "${MANUKEY}\${PRODUCTNAME}"
 !define UNINSTALLERSIGNCOMMAND ""
-!define ESTIMATEDSIZE "4611"
+!define ESTIMATEDSIZE "4612"
 !define STARTMENUFOLDER ""
 
 Var PassiveMode
