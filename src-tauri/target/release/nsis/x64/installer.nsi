@@ -40,7 +40,7 @@ ${StrLoc}
 !define HEADERIMAGE ""
 !define MAINBINARYNAME "claude-windows-app"
 !define MAINBINARYSRCPATH "C:\Users\micha\Gemini Windows App\scratch\ClaudeWindowsApp\src-tauri\target\release\claude-windows-app.exe"
-!define BUNDLEID "com.claude.app.v2"
+!define BUNDLEID "com.claude.app.v3"
 !define COPYRIGHT ""
 !define OUTFILE "nsis-output.exe"
 !define ARCH "x64"
@@ -56,7 +56,7 @@ ${StrLoc}
 !define MANUKEY "Software\${MANUFACTURER}"
 !define MANUPRODUCTKEY "${MANUKEY}\${PRODUCTNAME}"
 !define UNINSTALLERSIGNCOMMAND ""
-!define ESTIMATEDSIZE "4612"
+!define ESTIMATEDSIZE "4613"
 !define STARTMENUFOLDER ""
 
 Var PassiveMode
