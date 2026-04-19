@@ -40,7 +40,7 @@ ${StrLoc}
 !define HEADERIMAGE ""
 !define MAINBINARYNAME "claude-windows-app"
 !define MAINBINARYSRCPATH "C:\Users\micha\Gemini Windows App\scratch\ClaudeWindowsApp\src-tauri\target\release\claude-windows-app.exe"
-!define BUNDLEID "com.claude.app.v3"
+!define BUNDLEID "com.claude.app.v4"
 !define COPYRIGHT ""
 !define OUTFILE "nsis-output.exe"
 !define ARCH "x64"
