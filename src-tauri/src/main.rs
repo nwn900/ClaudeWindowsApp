@@ -80,6 +80,11 @@ fn main() {
             })
             .build()?;
 
+            // If autostart is enabled, launch minimized to tray
+            if app.autolaunch().is_enabled().unwrap_or(false) {
+                let _ = main_window.hide();
+            }
+
             // Hide to tray on close
             let win_clone = main_window.clone();
             main_window.on_window_event(move |event| {
