@@ -1,6 +1,6 @@
 [package]
 name = "claude-windows-app"
-version = "1.1.0"
+version = "1.1.6"
 description = "A simple Windows desktop application for Claude"
 authors = ["nwn900"]
 license = "ISC"
