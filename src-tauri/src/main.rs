@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
+    webview::DownloadEvent,
     Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
@@ -106,9 +107,37 @@ fn main() {
             "#)
             .inner_size(1200.0, 900.0)
             .auto_resize()
+            .disable_drag_drop_handler()
+            .additional_browser_args("--disable-features=OverlayScrollbarFlashAfterAnyScrollUpdate")
             .on_navigation(|url| {
-                // Allow Claude auth hosts plus popup-safe auth URLs.
-                is_allowed_url(url)
+                if is_allowed_url(url) {
+                    return true;
+                }
+                let _ = open::that_detached(url.as_str());
+                false
+            })
+            .on_download(|_webview, event| {
+                match event {
+                    DownloadEvent::Requested { destination, .. } => {
+                        let filename = destination
+                            .file_name()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("download")
+                            .to_string();
+                        let mut dlg = rfd::FileDialog::new().set_file_name(&filename);
+                        if let Some(dir) = destination.parent() {
+                            dlg = dlg.set_directory(dir);
+                        }
+                        if let Some(path) = dlg.save_file() {
+                            *destination = path;
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    DownloadEvent::Finished { .. } => true,
+                    _ => true,
+                }
             })
             .build()?;
 
@@ -127,6 +156,11 @@ fn main() {
                             let _ = win_clone.hide();
                         }
                     }
+                    WindowEvent::Focused(true) => {
+                        let _ = win_clone.eval(
+                            "document.querySelector('[role=\"main\"]')?.focus({preventScroll:true});",
+                        );
+                    }
                     _ => {}
                 }
             });
@@ -135,6 +169,8 @@ fn main() {
             let is_enabled = app.autolaunch().is_enabled().unwrap_or(false);
 
             let open_item = MenuItem::with_id(app, "open", "Open Claude", true, None::<&str>)?;
+            let refresh_item = MenuItem::with_id(app, "refresh", "Refresh Claude", true, None::<&str>)?;
+            let login_item = MenuItem::with_id(app, "login", "Login...", true, None::<&str>)?;
             let startup_item = CheckMenuItem::with_id(
                 app,
                 "startup",
@@ -146,7 +182,10 @@ fn main() {
             let separator = PredefinedMenuItem::separator(app)?;
             let close_item = MenuItem::with_id(app, "close", "Close Claude", true, None::<&str>)?;
 
-            let menu = Menu::with_items(app, &[&open_item, &startup_item, &separator, &close_item])?;
+            let menu = Menu::with_items(
+                app,
+                &[&open_item, &refresh_item, &login_item, &separator, &startup_item, &separator, &close_item],
+            )?;
 
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().cloned().unwrap())
@@ -158,6 +197,22 @@ fn main() {
                             if let Some(window) = app_handle.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
+                            }
+                        }
+                        "refresh" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                                let _ = window.eval("window.location.reload();");
+                            }
+                        }
+                        "login" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                                if let Ok(url) = url::Url::parse(TARGET_URL) {
+                                    let _ = window.navigate(url);
+                                }
                             }
                         }
                         "startup" => {
